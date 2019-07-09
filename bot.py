@@ -35,7 +35,7 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 logger.info('Starting TelegramBot')
-admins=config['default']['admins'].split()
+admins=re.split(r'[ ,]+',config['default']['admins'])
 
 for admin in admins:
    admin_users[admin]=user.User(str(admin))
@@ -72,14 +72,14 @@ def is_registered(message):
         if users[str(message.from_user.id)].blocked:
             blocked(message)
             return 
-    
-
         users[str(message.from_user.id)].username=message.from_user.username
         users[str(message.from_user.id)].chat_id=message.chat.id
         users[str(message.from_user.id)].save()
     logger.info("User present")
+
     if users[str(message.from_user.id)].registered != True:
-        if users[str(message.from_user.id)].phone_number_provided != True:
+    	logger.info("User not registered")
+    	if users[str(message.from_user.id)].phone_number_provided != True:
             logger.info("phone not provided")
             if message.content_type=='contact': 
                 users[str(message.from_user.id)].phone_number = message.contact.phone_number
@@ -90,11 +90,17 @@ def is_registered(message):
             else: # not contact
                 markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
                 markup.add(types.KeyboardButton(text = "Відправити номер телефону", request_contact = True))
-                bot.send_message(message.chat.id, """Для подачі звернень, Вам потрібно авторизуватися в системі. 
-                    Для цього достатньо відправити номер телефону і вказати своє Прізвище, ім'я та по-батькові.
-                    """, reply_markup = markup)
+                logger.info(users[str(message.from_user.id)].greeting)
+                if not users[str(message.from_user.id)].greeting :
+                	users[str(message.from_user.id)].greeting = True
+                	bot.send_message(message.chat.id, config['default']['start_msg'])
+
+                bot.send_message(message.chat.id,"""\nДля подачі звернень, Вам потрібно авторизуватися в системі. 
+Для цього достатньо відправити номер телефону і вказати своє Прізвище, ім'я та по-батькові.
+""", reply_markup = markup)
                 return False
-        else:      #phone provided
+    	else:
+        #phone provided
             logger.info("phone provided")
             if users[str(message.from_user.id)].fio_provided != True:
                 if message.content_type=='text' and re.match(r'(.*) (.*)',message.text): 
@@ -107,8 +113,8 @@ def is_registered(message):
                 else:
                     bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по-батькові")
                     return False
-        return False
-    logger.info("User registered")
+    	return False
+    	logger.info("User registered")
     return True
 
 def is_selected(message):
@@ -175,10 +181,6 @@ def is_selected(message):
     bot.send_message(message.chat.id,"Ви авторизовані як " + users[str(message.from_user.id)].fio + "\nВиберіть службу", reply_markup=markup)
     return False
 
-def greeting(message):
-    bot.send_message(message.chat.id, config['default']['start_msg'])
-    is_selected(message)
-
 @bot.message_handler(commands=["help"])
 def help(message):
     if str(message.from_user.id) in admins:
@@ -193,11 +195,13 @@ def help(message):
 /list_admins - переглянути список адмінстраторів
 /list_users - переглянути список користувачів
 /service_tg ID telegram_id - встановити телеграм для служби
+/service_email ID telegram_id - встановити email для служби
+/service_enable ID - включити службу
+/service_disable ID - виключити службу
 """)
     bot.send_message(message.chat.id, """Команди бота для користувачів:
 /help - Отримати допомогу
 /start - стартувати чат з ботом
-/auth - авторизуватися
 /service service_id - вибрати службу
 /email user@email - вказати свій емейл для отримання копій звернень
 /finish - завершити подачу звернення
@@ -244,17 +248,74 @@ def service_tg(message):
         except Exception as error:
             logger.error("Set service tg error " + str(error))
             bot.send_message(message.chat.id,"Для додавання введіть правильний номер служби /help") 
+
+@bot.message_handler(commands=["service_email"])
+def service_email(message):
+    if str(message.from_user.id) in admins:
+        try:
+            match=message.text.split(" ")
+            if match[1] != "" and match[1] >str(0) and match[1] <= str(config['default']['services_count']) :
+                service_id = match[1]
+                if len(match) > 2:
+                    user_email = match[2]
+                else:    
+                    user_email=""
+                config['service'+str(service_id)]['responsible_email'] = user_email
+                with open('config.ini',"w") as configfile:
+                    config.write(configfile)
+                bot.send_message(message.chat.id,"Отримувача email змінено")
+            else:
+                bot.send_message(message.chat.id,"Для додавання введіть правильний номер служби /help") 
+        except Exception as error:
+            logger.error("Set service email error " + str(error))
+            bot.send_message(message.chat.id,"Для додавання введіть правильний номер служби /help") 
+
+@bot.message_handler(commands=["service_enable"])
+def service_enable(message):
+    if str(message.from_user.id) in admins:
+        try:
+            match=message.text.split(" ")
+            if match[1] != "" and match[1] >str(0) and match[1] <= str(config['default']['services_count']) :
+                service_id = match[1]
+                config['service'+str(service_id)]['active'] = True
+                with open('config.ini',"w") as configfile:
+                    config.write(configfile)
+                bot.send_message(message.chat.id,"Отримувача змінено")
+            else:
+                bot.send_message(message.chat.id,"Для включення введіть правильний номер служби /help") 
+        except Exception as error:
+            logger.error("Set service enable error " + str(error))
+            bot.send_message(message.chat.id,"Для включення введіть правильний номер служби /help") 
+
+@bot.message_handler(commands=["service_disable"])
+def service_enable(message):
+    if str(message.from_user.id) in admins:
+        try:
+            match=message.text.split(" ")
+            if match[1] != "" and match[1] >str(0) and match[1] <= str(config['default']['services_count']) :
+                service_id = match[1]
+                config['service'+str(service_id)]['active'] = False
+                with open('config.ini',"w") as configfile:
+                    config.write(configfile)
+                bot.send_message(message.chat.id,"Службу виключено")
+            else:
+                bot.send_message(message.chat.id,"Для відключення введіть правильний номер служби /help") 
+        except Exception as error:
+            logger.error("Set service disable error " + str(error))
+            bot.send_message(message.chat.id,"Для відключення введіть правильний номер служби /help") 
+
        
 @bot.message_handler(commands=["add_admin"])
 def add_admin(message):
     if str(message.from_user.id) in admins:
         try:
-            match=re.match('/add_admin (.+)',message.text)
+            match=re.match('/add_admin (\d+)',message.text)
             if match.group(1) != "" :
                 user_id = match.group(1)
                 if user_id not in users:
                     users[str(user_id)]=user.User(str(user_id))
-                admins.append(user_id)
+                if not user_id in admins:
+                	admins.append(user_id)
                 config['default']['admins'] = " ".join(admins)
                 with open('config.ini',"w") as configfile:
                     config.write(configfile)
@@ -269,12 +330,13 @@ def add_admin(message):
 def del_admin(message):
     if str(message.from_user.id) in admins:
         try:
-            match=re.match('/del_admin (.+)',message.text)
+            match=re.match('/del_admin (\d+)',message.text)
             if match.group(1) != "" :
                 user_id = match.group(1)
                 if user_id not in users:
                     users[str(user_id)]=user.User(str(user_id))
-                admins.remove(user_id)
+                if user_id in admins and (user_id!=message.from_user.id):
+                	admins.remove(user_id)
                 config['default']['admins'] = " ".join(admins)
                 with open('config.ini',"w") as configfile:
                     config.write(configfile)
@@ -324,7 +386,7 @@ def ban(message):
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     if str(message.from_user.id) in admins:
         try:
-            match=re.match('/ban (.+)',message.text)
+            match=re.match('/ban (\d+)',message.text)
             if match.group(1) != "" :
                 user_id = match.group(1)
                 if user_id not in users:
@@ -342,7 +404,7 @@ def ban(message):
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     if str(message.from_user.id) in admins:
         try:
-            match=re.match('/unban (.+)',message.text)
+            match=re.match('/unban (\d+)',message.text)
             if match.group(1) != "" :
                 user_id = match.group(1)
                 if user_id not in users:
@@ -361,8 +423,7 @@ def email(message):
     logger.debug(message)
     if message.from_user.id not in users:
         if not is_registered(message):
-            greeting(message)
-            return 
+        	return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
         return 
@@ -385,7 +446,7 @@ def start(message):
     try:
         logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+str(message.content_type)+"]: "+str(message.text))
         logger.debug(message)
-        greeting(message)
+        is_registered(message)
     except Exception as error:
         logger.error("Start error" + str(error))
 
@@ -396,7 +457,6 @@ def finish(message):
     logger.debug(message)
     if message.from_user.id not in users:
         if not is_registered(message):
-            greeting(message)
             return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
@@ -457,7 +517,6 @@ def service(message):
     logger.debug(message)
     if message.from_user.id not in users:
         if not is_registered(message): 
-            greeting(message)
             return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
@@ -466,7 +525,6 @@ def service(message):
         match=re.match('/service (\d+) .*',message.text)
         if int(match.group(1)) >0 :
             users[str(message.from_user.id)].selected = int(match.group(1))
-            logger.info("service:"+match.group(1))
     except Exception as error:
         logger.error("Illegal service provided " + str(error))
     is_selected(message)
@@ -478,7 +536,6 @@ def other_messages(message):
     logger.debug(message)
     if message.from_user.id not in users:
         if not is_registered(message):
-            greeting(message)
             return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)

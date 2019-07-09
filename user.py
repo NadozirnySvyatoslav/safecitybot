@@ -22,6 +22,7 @@ class User:
     fio_provided = False
     location_provided = False
     service_provided = False
+    greeting = False
     blocked = False
     selected = 0
     uuid = '' 
