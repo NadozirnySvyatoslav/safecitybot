@@ -15,6 +15,7 @@ import time
 # -*- coding: utf-8 -*-
 
 users={}
+admin_users={}
 
 start_time = time.time()
 
@@ -35,12 +36,16 @@ logger.addHandler(fh)
 logger.addHandler(ch)
 logger.info('Starting TelegramBot')
 admins=config['default']['admins'].split()
+
 for admin in admins:
-   users[admin]=user.User(str(admin))
+   admin_users[admin]=user.User(str(admin))
 
 def send2admins(msg):
     for admin in admins:
-        bot.send_message(users[admin].chat_id,msg)
+        try:
+            bot.send_message(admin_users[admin].chat_id,msg)
+        except Exception as error:
+            logger.error('No admins found')    
 
 def download_file(url,filename):
     if len(filename) > 0:
@@ -61,20 +66,25 @@ def blocked(message):
     bot.send_message(message.chat.id,"Вас заблоковано адміністратором")
 
 def is_registered(message):
-    if message.from_user.id not in users:
+    if str(message.from_user.id) not in users:
+        logger.info("User not present")
         users[str(message.from_user.id)] = user.User(str(message.from_user.id))
         if users[str(message.from_user.id)].blocked:
             blocked(message)
             return 
     
+
         users[str(message.from_user.id)].username=message.from_user.username
         users[str(message.from_user.id)].chat_id=message.chat.id
         users[str(message.from_user.id)].save()
+    logger.info("User present")
     if users[str(message.from_user.id)].registered != True:
         if users[str(message.from_user.id)].phone_number_provided != True:
+            logger.info("phone not provided")
             if message.content_type=='contact': 
                 users[str(message.from_user.id)].phone_number = message.contact.phone_number
                 users[str(message.from_user.id)].phone_number_provided = True
+                users[str(message.from_user.id)].save()
                 bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по-батькові", reply_markup = types.ReplyKeyboardRemove())
                 return False
             else: # not contact
@@ -85,8 +95,9 @@ def is_registered(message):
                     """, reply_markup = markup)
                 return False
         else:      #phone provided
+            logger.info("phone provided")
             if users[str(message.from_user.id)].fio_provided != True:
-                if message.content_type=='text' and re.match(r'(.*) (.*) (.*)',message.text): 
+                if message.content_type=='text' and re.match(r'(.*) (.*)',message.text): 
                     users[str(message.from_user.id)].fio = message.text
                     users[str(message.from_user.id)].fio_provided = True
                     users[str(message.from_user.id)].registered = True
@@ -97,13 +108,16 @@ def is_registered(message):
                     bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по-батькові")
                     return False
         return False
+    logger.info("User registered")
     return True
 
 def is_selected(message):
+    logger.info("Service: "+str(users[str(message.from_user.id)].selected))
     if users[str(message.from_user.id)].selected != 0:
         try:
             if config["service"+str(users[str(message.from_user.id)].selected)].getboolean("active"):
-#                if users[str(message.from_user.id)].location_provided != True:
+    #                if users[str(message.from_user.id)].location_provided != True:
+                
                 if users[str(message.from_user.id)].service_provided != True:
                     users[str(message.from_user.id)].service_provided = True
                     btn = types.KeyboardButton("/finish")
@@ -112,7 +126,7 @@ def is_selected(message):
                     bot.send_message(message.chat.id,"Опишіть звернення і приєднайте фото/відео/аудіо докази, після завершення натисніть /finish", reply_markup=markup)
                     users[str(message.from_user.id)].start() 
                     return False
- 
+
                 if message.content_type=='location':
                     users[str(message.from_user.id)].location_provided = True
                     users[str(message.from_user.id)].location = message.location
@@ -161,13 +175,9 @@ def is_selected(message):
     bot.send_message(message.chat.id,"Ви авторизовані як " + users[str(message.from_user.id)].fio + "\nВиберіть службу", reply_markup=markup)
     return False
 
-def handler(message):
-    if is_registered(message):
-        is_selected(message)
-
 def greeting(message):
     bot.send_message(message.chat.id, config['default']['start_msg'])
-    handler(message)
+    is_selected(message)
 
 @bot.message_handler(commands=["help"])
 def help(message):
@@ -187,6 +197,7 @@ def help(message):
     bot.send_message(message.chat.id, """Команди бота для користувачів:
 /help - Отримати допомогу
 /start - стартувати чат з ботом
+/auth - авторизуватися
 /service service_id - вибрати службу
 /email user@email - вказати свій емейл для отримання копій звернень
 /finish - завершити подачу звернення
@@ -346,16 +357,17 @@ def ban(message):
 
 @bot.message_handler(commands=["email"])
 def email(message):
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
+    logger.debug(message)
     if message.from_user.id not in users:
-        greeting(message)
-        return 
+        if not is_registered(message):
+            greeting(message)
+            return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
         return 
         
     try:
-        logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
-        logger.debug(message)
         try:
             match=re.match('/email (.+@.+\..+)',message.text)
             if match.group(1) != "" and users[str(message.from_user.id)].registered:
@@ -380,16 +392,17 @@ def start(message):
 
 @bot.message_handler(commands=["finish"])
 def finish(message):
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
+    logger.debug(message)
     if message.from_user.id not in users:
-        greeting(message)
-        return 
+        if not is_registered(message):
+            greeting(message)
+            return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
         return 
     try:
-        logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
-        logger.debug(message)
-        if is_registered(message) and users[str(message.from_user.id)].uuid != "":
+        if users[str(message.from_user.id)].uuid != "":
             try:
                 if config['service'+str(users[str(message.from_user.id)].selected)]['responsible_email'] :
                     logger.info("Підготовка листа")
@@ -433,48 +446,45 @@ def finish(message):
                 bot.send_message(message.chat.id,"Дякуємо, Ваше звернення взяте на обробку", reply_markup = types.ReplyKeyboardRemove())
             except Exception as error:
                 logger.error("Sent error " + str(error))
-        handler(message)
+        is_selected(message)
     except Exception as error:
         logger.error("Finish error" + str(error))
 
 
 @bot.message_handler(commands=["service"])
 def service(message):
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
+    logger.debug(message)
     if message.from_user.id not in users:
-        greeting(message)
-        return 
+        if not is_registered(message): 
+            greeting(message)
+            return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
         return 
     try:
-        logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
-        logger.debug(message)
-        try:
-            match=re.match('/service (\d+) .*',message.text)
-            if int(match.group(1)) >0 :
-                users[str(message.from_user.id)].selected = int(match.group(1))
-        except Exception as error:
-            logger.error("Illegal service provided " + str(error))
-        handler(message)
+        match=re.match('/service (\d+) .*',message.text)
+        if int(match.group(1)) >0 :
+            users[str(message.from_user.id)].selected = int(match.group(1))
+            logger.info("service:"+match.group(1))
     except Exception as error:
-        logger.error("Finish error" + str(error))
+        logger.error("Illegal service provided " + str(error))
+    is_selected(message)
 
 
 @bot.message_handler(content_types=['contact','text','location','document','video','photo','audio','voice'])
 def other_messages(message):
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
+    logger.debug(message)
     if message.from_user.id not in users:
-        greeting(message)
-        return 
+        if not is_registered(message):
+            greeting(message)
+            return 
     if users[str(message.from_user.id)].blocked:
         blocked(message)
         return 
-    try:
-        logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
-        logger.debug(message)
-        handler(message)
-    except Exception as error:
-        logger.error("Receive error" + str(error))
-
+    is_selected(message)
+    
 @bot.message_handler()
 def not_messages(message):
         logger.info(message)

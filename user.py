@@ -38,6 +38,10 @@ class User:
             self.fio=config['userdata']['fio']
             self.email=config['userdata']['email']
             self.registered=config['userdata'].getboolean('registered')
+            if self.phone_number != "" and self.phone_number is not None:
+                self.phone_number_provided = True;
+            if self.fio != "" and self.fio is not None:
+                self.fio_provided = True;
 
     def save(self):
         if not os.path.exists(users_dir):
