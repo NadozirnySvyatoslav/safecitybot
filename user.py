@@ -50,7 +50,7 @@ class User:
         if not os.path.exists(users_dir + os.path.sep + self.id):
             os.makedirs(users_dir + os.path.sep + self.id)
         config = configparser.ConfigParser()
-        config['userdata'] = { 'username' : self.username,
+        config['userdata'] = { 'username' : str(self.username),
                                'phone_number' : self.phone_number,
                                'fio' : self.fio,
                                'email' : self.email,

@@ -85,7 +85,7 @@ def is_registered(message):
                 users[str(message.from_user.id)].phone_number = message.contact.phone_number
                 users[str(message.from_user.id)].phone_number_provided = True
                 users[str(message.from_user.id)].save()
-                bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по-батькові", reply_markup = types.ReplyKeyboardRemove())
+                bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по батькові", reply_markup = types.ReplyKeyboardRemove())
                 return False
             else: # not contact
                 markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
@@ -96,7 +96,7 @@ def is_registered(message):
                 	bot.send_message(message.chat.id, config['default']['start_msg'])
 
                 bot.send_message(message.chat.id,"""\nДля подачі звернень, Вам потрібно авторизуватися в системі. 
-Для цього достатньо відправити номер телефону і вказати своє Прізвище, ім'я та по-батькові.
+Для цього достатньо відправити номер телефону і вказати своє Прізвище, ім'я та по батькові.
 """, reply_markup = markup)
                 return False
     	else:
@@ -111,7 +111,7 @@ def is_registered(message):
                     users[str(message.from_user.id)].save()
                     return True
                 else:
-                    bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по-батькові")
+                    bot.send_message(message.chat.id,"Вкажіть Ваше Прізвище, Ім'я і по батькові")
                     return False
     	return False
     	logger.info("User registered")
@@ -203,6 +203,7 @@ def help(message):
 /help - Отримати допомогу
 /start - стартувати чат з ботом
 /service service_id - вибрати службу
+/name - змінити прізвище, імя і по батькові
 /email user@email - вказати свій емейл для отримання копій звернень
 /finish - завершити подачу звернення
 /id - показати свій telegram_ID
@@ -242,7 +243,7 @@ def service_tg(message):
                     config.write(configfile)
                 bot.send_message(message.chat.id,"Отримувача змінено")
                 if user_id:
-                    bot.send_message(user_id,"Вас зроблено отримувачем повідомлень від бота, /help "+" @"+users[str(message.from_user.id)].username)
+                    bot.send_message(user_id,"Вас зроблено отримувачем повідомлень від бота, /help "+" @"+str(users[str(message.from_user.id)].username))
             else:
                 bot.send_message(message.chat.id,"Для додавання введіть правильний номер служби /help") 
         except Exception as error:
@@ -274,13 +275,13 @@ def service_email(message):
 def service_enable(message):
     if str(message.from_user.id) in admins:
         try:
-            match=message.text.split(" ")
+            match=re.split(r' +',message.text)
             if match[1] != "" and match[1] >str(0) and match[1] <= str(config['default']['services_count']) :
                 service_id = match[1]
-                config['service'+str(service_id)]['active'] = True
+                config['service'+str(service_id)]['active'] ="True"
                 with open('config.ini',"w") as configfile:
                     config.write(configfile)
-                bot.send_message(message.chat.id,"Отримувача змінено")
+                bot.send_message(message.chat.id,"Службу включено")
             else:
                 bot.send_message(message.chat.id,"Для включення введіть правильний номер служби /help") 
         except Exception as error:
@@ -294,7 +295,7 @@ def service_enable(message):
             match=message.text.split(" ")
             if match[1] != "" and match[1] >str(0) and match[1] <= str(config['default']['services_count']) :
                 service_id = match[1]
-                config['service'+str(service_id)]['active'] = False
+                config['service'+str(service_id)]['active'] = "False"
                 with open('config.ini',"w") as configfile:
                     config.write(configfile)
                 bot.send_message(message.chat.id,"Службу виключено")
@@ -342,7 +343,7 @@ def del_admin(message):
                     config.write(configfile)
                     logger.info("Administrator deleted: "+str(user_id))
                 bot.send_message(message.chat.id,"Адміністратора видалено")
-                bot.send_message(user_id,"Вас видалено з адміністраторів "+" @"+users[str(message.from_user.id)].username)
+                bot.send_message(user_id,"Вас видалено з адміністраторів "+" @"+str(users[str(message.from_user.id)].username))
         except Exception as error:
             logger.error("Del admin error " + str(error))
             bot.send_message(message.chat.id,"Для видалення адміністратора введіть:\n /del_admin user_id\n/help")         
@@ -351,7 +352,7 @@ def del_admin(message):
 def list_admin(message):
     if str(message.from_user.id) in admins:
         try:
-            bot.send_message(message.chat.id,"Адміністратори\n"+" ".join(admins))
+            bot.send_message(message.chat.id,"Адміністратори:\n"+"\n".join(admins))
         except Exception as error:
             logger.error("List admin error " + str(error))
 
@@ -377,8 +378,11 @@ def kill(message):
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     if str(message.from_user.id) in admins:
         logger.info("Kill command")
-
-        send2admins("Бота зупинив користувач: "+str(message.from_user.id)+ "/ @"+users[str(message.from_user.id)].username)
+        if users[str(message.from_user.id)].username is None:
+        	adminname=""
+        else:
+        	adminname="@"+str(users[str(message.from_user.id)].username)
+        send2admins("Бота зупинив користувач: "+str(message.from_user.id)+adminname)
         bot.stop()
 
 @bot.message_handler(commands=["ban"])
@@ -394,7 +398,11 @@ def ban(message):
                 users[str(user_id)].blocked=True
                 users[str(user_id)].save()
                 bot.send_message(message.chat.id,"User banned")
-                bot.send_message(user_id,"Вас заблоковано адміністратором "+" @"+users[str(message.from_user.id)].username)
+                if users[str(message.from_user.id)].username is None:
+                	adminname=""
+                else:
+                	adminname="@"+str(users[str(message.from_user.id)].username)
+                bot.send_message(user_id,"Вас заблоковано адміністратором "+adminname)
         except Exception as error:
             logger.error("Ban error " + str(error))
             bot.send_message(message.chat.id,"Для блокування користувача введіть:\n /ban user_id \n/help") 
@@ -412,10 +420,14 @@ def ban(message):
                 users[str(user_id)].blocked=False
                 users[str(user_id)].save()
                 bot.send_message(message.chat.id,"User unbanned")
-                bot.send_message(user_id,"Вас розблоковано адміністратором "+" @"+users[str(message.from_user.id)].username)
+                if users[str(message.from_user.id)].username is None:
+                	adminname=""
+                else:
+                	adminname="@"+str(users[str(message.from_user.id)].username)
+                bot.send_message(user_id,"Вас розблоковано адміністратором "+adminname)
         except Exception as error:
             logger.error("Ban error " + str(error))
-            bot.send_message(message.chat.id,"Для розблокування користувача введіть:\n /ban user_id \n/help") 
+            bot.send_message(message.chat.id,"Для розблокування користувача введіть:\n /unban user_id \n/help") 
 
 @bot.message_handler(commands=["email"])
 def email(message):
@@ -443,12 +455,37 @@ def email(message):
 
 @bot.message_handler(commands=["start"])
 def start(message):
-    try:
-        logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+str(message.content_type)+"]: "+str(message.text))
-        logger.debug(message)
-        is_registered(message)
-    except Exception as error:
-        logger.error("Start error" + str(error))
+    #try:
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+str(message.content_type)+"]: "+str(message.text))
+    logger.debug(message)
+    if is_registered(message):
+    	if users[str(message.from_user.id)].blocked:
+        	blocked(message)
+    	else:
+    		bot.send_message(message.chat.id, config['default']['start_msg'])
+
+    #except Exception as error:
+    #    logger.error("Start error" + str(error))
+
+@bot.message_handler(commands=["name"])
+def name(message):
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
+    logger.debug(message)
+    if message.from_user.id not in users:
+        if not is_registered(message):
+            return 
+    if users[str(message.from_user.id)].blocked:
+        blocked(message)
+        return 
+    users[str(message.from_user.id)].fio=""
+    users[str(message.from_user.id)].fio_provided=False
+    users[str(message.from_user.id)].registered=False
+    is_registered(message)
+    	
+    
+    
+
+
 
 
 @bot.message_handler(commands=["finish"])
@@ -464,7 +501,7 @@ def finish(message):
     try:
         if users[str(message.from_user.id)].uuid != "":
             try:
-                if config['service'+str(users[str(message.from_user.id)].selected)]['responsible_email'] :
+                if "responsible_email" in config['service'+str(users[str(message.from_user.id)].selected)] and config['service'+str(users[str(message.from_user.id)].selected)]['responsible_email'] :
                     logger.info("Підготовка листа")
                     msg = users[str(message.from_user.id)].get_email_msg()
                     logger.debug(msg.as_string());
@@ -491,12 +528,12 @@ def finish(message):
                     s.quit() 
                     logger.debug("Quit: "+str(s));
                     
-                if config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'] :
+                if "responsible_tg" in config['service'+str(users[str(message.from_user.id)].selected)] and  config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'] :
                     msg = users[str(message.from_user.id)].get_tg_msg()
                     bot.send_message(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'],"Подано нове звернення:\n"+msg)
                     files=users[str(message.from_user.id)].get_tg_files()
                     for doc in files:
-                        bot.send_document(message.chat.id, open(doc, 'rb'))
+                        bot.send_document(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'], open(doc, 'rb'))
                     logger.info(files)
                 users[str(message.from_user.id)].selected=0
                 users[str(message.from_user.id)].location_provided = False
@@ -522,7 +559,7 @@ def service(message):
         blocked(message)
         return 
     try:
-        match=re.match('/service (\d+) .*',message.text)
+        match=re.match('/service (\d+) ?.*',message.text)
         if int(match.group(1)) >0 :
             users[str(message.from_user.id)].selected = int(match.group(1))
     except Exception as error:
