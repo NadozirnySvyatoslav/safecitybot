@@ -149,9 +149,10 @@ def is_selected(message):
                 if message.content_type=='location':
                     users[str(message.from_user.id)].location_provided = True
                     users[str(message.from_user.id)].location = message.location
-
-                users[str(message.from_user.id)].append(message)
-                if message.content_type in ["text","location"]:
+                    return False
+                
+                if message.content_type =="text":
+                    users[str(message.from_user.id)].append(message)
                     return False
 
                 if message.photo is not None:
@@ -549,18 +550,27 @@ def finish(message):
                     logger.debug("Quit: "+str(s));
                     
                 if "responsible_tg" in config['service'+str(users[str(message.from_user.id)].selected)] and  config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'] :
+                    data = users[str(message.from_user.id)].get_data()
                     msg = users[str(message.from_user.id)].get_tg_msg()
-                    bot.send_message(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'],"Подано нове звернення:\n"+msg,parse_mode="HTML")
                     files=users[str(message.from_user.id)].get_tg_files()
-                    for doc in files:
-                        bot.send_document(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'], open(doc, 'rb'))
-                    logger.info(files)
+                    if len(data)==0 and len(files)==0:
+                        bot.send_message(message.chat.id,"Ваше звернення не містить даних", reply_markup = types.ReplyKeyboardRemove())
+                    else:
+                        bot.send_message(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'],"Подано нове звернення:\n"+msg,parse_mode="HTML")
+                        if not users[str(message.from_user.id)].location is None:
+                            bot.send_location(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'], 
+                                users[str(message.from_user.id)].location.latitude ,
+                                users[str(message.from_user.id)].location.longitude )
+                        for doc in files:
+                            bot.send_document(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'], open(doc, 'rb'))
+                        logger.info(files)
+                        bot.send_message(message.chat.id,"Дякуємо, Ваше звернення взяте на обробку", reply_markup = types.ReplyKeyboardRemove())
                 users[str(message.from_user.id)].selected=0
                 users[str(message.from_user.id)].location_provided = False
                 users[str(message.from_user.id)].service_provided = False
                 users[str(message.from_user.id)].uuid = ""
                 users[str(message.from_user.id)].location = {}
-                bot.send_message(message.chat.id,"Дякуємо, Ваше звернення взяте на обробку", reply_markup = types.ReplyKeyboardRemove())
+                
             except Exception as error:
                 logger.error("Sent error " + str(error))
         is_selected(message)
@@ -593,7 +603,7 @@ def service(message):
 def other_messages(message):
     if not is_private(message):
         return
-    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
+    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message))
     logger.debug(message)
     if message.from_user.id not in users:
         if not is_registered(message):

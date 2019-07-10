@@ -69,7 +69,7 @@ class User:
             os.makedirs(requests_dir + os.path.sep + self.uuid)
         if not os.path.exists(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches'):
             os.makedirs(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches')
-            fo=open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'data.txt',"a")
+            fo=open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'header.txt',"a")
             msg = re.sub('#username#' , self.username, msg)
             msg = re.sub('#user_id#' , self.id, msg)
             msg = re.sub('#email#' , self.email, msg)
@@ -79,14 +79,23 @@ class User:
 
             fo.write(msg)
             fo.close()
+            fo=open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'data.txt',"a")
+            fo.write("")
+            fo.close()
 
+    def get_data(self):
+        with open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'data.txt', 'r') as fp:
+            text=fp.read()
+        return text
+    
     def get_email_msg(self):
         msg = MIMEMultipart() 
         #msg.attach(MIMEText(body, 'plain')) 
-        filename = 'data.txt'
+        with open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'header.txt', 'r') as fp:
+            header=fp.read()
         with open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'data.txt', 'r') as fp:
-            msg.attach(MIMEText(fp.read()))
-
+            text=fp.read()
+        msg.attach(MIMEText(header+"\n"+text))
 
         for filename in os.listdir(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches' ):
             attachment = open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches' + os.path.sep + filename, "rb") 
@@ -97,10 +106,11 @@ class User:
             msg.attach(p) 
         return msg
     def get_tg_msg(self):
-        filename = 'data.txt'
+        with open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'header.txt', 'r') as fp:
+            header=fp.read()
         with open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'data.txt', 'r') as fp:
             text=fp.read()
-        return text
+        return header+"\n"+text
     def get_tg_files(self):
         files=[]
         for filename in os.listdir(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches' ):
