@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['bot.py'],
-             pathex=['C:\\Users\\Славік\\projects\\safecitybot'],
+             pathex=['C:\\Nadozirny_SV\\Python_projects\\safecitybot'],
              binaries=[],
              datas=[],
              hiddenimports=[],
