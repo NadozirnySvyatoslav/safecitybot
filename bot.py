@@ -143,7 +143,7 @@ def is_selected(message):
                     markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
                     markup.add(btn)
                     bot.send_message(message.chat.id,"Опишіть звернення і приєднайте фото/відео/аудіо докази, після завершення натисніть /finish", reply_markup=markup)
-                    users[str(message.from_user.id)].start() 
+                    users[str(message.from_user.id)].start(config['default']['msg_template']) 
                     return False
 
                 if message.content_type=='location':
@@ -550,7 +550,7 @@ def finish(message):
                     
                 if "responsible_tg" in config['service'+str(users[str(message.from_user.id)].selected)] and  config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'] :
                     msg = users[str(message.from_user.id)].get_tg_msg()
-                    bot.send_message(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'],"Подано нове звернення:\n"+msg)
+                    bot.send_message(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'],"Подано нове звернення:\n"+msg,parse_mode="HTML")
                     files=users[str(message.from_user.id)].get_tg_files()
                     for doc in files:
                         bot.send_document(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'], open(doc, 'rb'))

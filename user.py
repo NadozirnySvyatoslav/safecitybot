@@ -6,6 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText 
 from email.mime.base import MIMEBase 
 from email import encoders 
+import re
 
 users_dir = "users"
 requests_dir = "requests"
@@ -60,7 +61,7 @@ class User:
         with open(users_dir + os.path.sep + self.id + os.path.sep + 'config.ini',"w") as configfile:
             config.write(configfile)
 
-    def start(self):
+    def start(self,msg):
         self.uuid = str(uuid.uuid4())
         if not os.path.exists(requests_dir):
             os.makedirs(requests_dir)
@@ -69,13 +70,14 @@ class User:
         if not os.path.exists(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches'):
             os.makedirs(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches')
             fo=open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'data.txt',"a")
-            fo.write("""Username: %s
-User ID: %s
-FIO: %s
-Phone: %s
-Email: %s
--------------------------
-""" % ( self.username, self.id, self.fio, self.phone_number, self.email) )
+            msg = re.sub('#username#' , self.username, msg)
+            msg = re.sub('#user_id#' , self.id, msg)
+            msg = re.sub('#email#' , self.email, msg)
+            msg = re.sub('#fio#' , self.fio, msg)
+            msg = re.sub('#phone_number#' , self.phone_number, msg)
+            msg = re.sub('#location#' , str(self.location), msg)
+
+            fo.write(msg)
             fo.close()
 
     def get_email_msg(self):
