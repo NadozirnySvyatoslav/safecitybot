@@ -69,7 +69,16 @@ def download_file(url,filename):
 def blocked(message):
     bot.send_message(message.chat.id,"Вас заблоковано адміністратором")
 
+def is_private(message):
+    if str(message.chat.type)!="private" and not (str(message.from_user.id) in admins):
+        bot.send_message(message.chat.id,"Для подачі звернення напишіть напряму боту "+config['default']['name'])
+        return
+    else:
+        return True
+
 def is_registered(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) not in users:
         logger.info("User not present")
         users[str(message.from_user.id)] = user.User(str(message.from_user.id))
@@ -187,38 +196,22 @@ def is_selected(message):
 
 @bot.message_handler(commands=["help"])
 def help(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
-        bot.send_message(message.chat.id, """Команди бота для адміністратора:
-/help - Отримати допомогу
-/kill - зупинити Бота
-/ban user_telegram_id - заблокувати користувача
-/unban user_telegram_id - розблокувати користувача
-/stats - статистика
-/add_admin user_telegram_id - добавити адміністратора
-/del_admin user_telegram_id - видалити адміністратора
-/list_admins - переглянути список адмінстраторів
-/list_users - переглянути список користувачів
-/service_tg ID telegram_id - встановити телеграм для служби
-/service_email ID telegram_id - встановити email для служби
-/service_enable ID - включити службу
-/service_disable ID - виключити службу
-""")
-    bot.send_message(message.chat.id, """Команди бота для користувачів:
-/help - Отримати допомогу
-/start - стартувати чат з ботом
-/service service_id - вибрати службу
-/name - змінити прізвище, імя і по батькові
-/email user@email - вказати свій емейл для отримання копій звернень
-/finish - завершити подачу звернення
-/id - показати свій telegram_ID
-""")
+        bot.send_message(message.chat.id, config['text']['admin_help'])
+    bot.send_message(message.chat.id, config['text']['help'])
 
 @bot.message_handler(commands=["id"])
 def myid(message):
+    if not is_private(message):
+        return
     bot.send_message(message.chat.id, str(message.from_user.id))
 
 @bot.message_handler(commands=["list_users"])
 def list_users(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         users_list="telegram_id / Username / ПІБ\n"
         usersconfig=configparser.ConfigParser()
@@ -231,6 +224,8 @@ def list_users(message):
 
 @bot.message_handler(commands=["service_tg"])
 def service_tg(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             match=message.text.split(" ")
@@ -256,6 +251,8 @@ def service_tg(message):
 
 @bot.message_handler(commands=["service_email"])
 def service_email(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             match=message.text.split(" ")
@@ -277,6 +274,8 @@ def service_email(message):
 
 @bot.message_handler(commands=["service_enable"])
 def service_enable(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             match=re.split(r' +',message.text)
@@ -294,6 +293,8 @@ def service_enable(message):
 
 @bot.message_handler(commands=["service_disable"])
 def service_enable(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             match=message.text.split(" ")
@@ -312,6 +313,8 @@ def service_enable(message):
        
 @bot.message_handler(commands=["add_admin"])
 def add_admin(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             match=re.match('/add_admin (\d+)',message.text)
@@ -333,6 +336,8 @@ def add_admin(message):
 
 @bot.message_handler(commands=["del_admin"])
 def del_admin(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             match=re.match('/del_admin (\d+)',message.text)
@@ -354,6 +359,8 @@ def del_admin(message):
 
 @bot.message_handler(commands=["list_admins"])
 def list_admin(message):
+    if not is_private(message):
+        return
     if str(message.from_user.id) in admins:
         try:
             bot.send_message(message.chat.id,"Адміністратори:\n"+"\n".join(admins))
@@ -368,6 +375,8 @@ def hms_string(sec_elapsed):
 
 @bot.message_handler(commands=["stats"])
 def stats(message):
+    if not is_private(message):
+        return
     requests=len([name for name in os.listdir('requests') if os.path.isdir(os.path.join('requests', name))])
     users=len([name for name in os.listdir('users') if os.path.isdir(os.path.join('users', name))])
     uptime=time.time()-start_time
@@ -379,6 +388,8 @@ uptime: %s
 
 @bot.message_handler(commands=["kill"])
 def kill(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     if str(message.from_user.id) in admins:
         logger.info("Kill command")
@@ -391,6 +402,8 @@ def kill(message):
 
 @bot.message_handler(commands=["ban"])
 def ban(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     if str(message.from_user.id) in admins:
         try:
@@ -413,6 +426,8 @@ def ban(message):
 
 @bot.message_handler(commands=["unban"])
 def ban(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     if str(message.from_user.id) in admins:
         try:
@@ -435,6 +450,8 @@ def ban(message):
 
 @bot.message_handler(commands=["email"])
 def email(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     logger.debug(message)
     if message.from_user.id not in users:
@@ -459,20 +476,23 @@ def email(message):
 
 @bot.message_handler(commands=["start"])
 def start(message):
-    #try:
-    logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+str(message.content_type)+"]: "+str(message.text))
-    logger.debug(message)
-    if is_registered(message):
-    	if users[str(message.from_user.id)].blocked:
-        	blocked(message)
-    	else:
-    		bot.send_message(message.chat.id, config['default']['start_msg'])
-
-    #except Exception as error:
-    #    logger.error("Start error" + str(error))
+    if not is_private(message):
+        return
+    try:
+        logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+str(message.content_type)+"]: "+str(message.text))
+        logger.debug(message)
+        if is_registered(message):
+            if users[str(message.from_user.id)].blocked:
+                blocked(message)
+            else:
+                bot.send_message(message.chat.id, config['default']['start_msg'])
+    except Exception as error:
+        logger.error("Start error" + str(error))
 
 @bot.message_handler(commands=["name"])
 def name(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     logger.debug(message)
     if message.from_user.id not in users:
@@ -485,15 +505,11 @@ def name(message):
     users[str(message.from_user.id)].fio_provided=False
     users[str(message.from_user.id)].registered=False
     is_registered(message)
-    	
-    
-    
-
-
-
 
 @bot.message_handler(commands=["finish"])
 def finish(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     logger.debug(message)
     if message.from_user.id not in users:
@@ -554,6 +570,8 @@ def finish(message):
 
 @bot.message_handler(commands=["service"])
 def service(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     logger.debug(message)
     if message.from_user.id not in users:
@@ -573,6 +591,8 @@ def service(message):
 
 @bot.message_handler(content_types=['contact','text','location','document','video','photo','audio','voice'])
 def other_messages(message):
+    if not is_private(message):
+        return
     logger.info("Отримано повідомлення від \""+str(message.from_user.id)+"\" ["+message.content_type+"]: "+str(message.text))
     logger.debug(message)
     if message.from_user.id not in users:
@@ -583,9 +603,6 @@ def other_messages(message):
         return 
     is_selected(message)
     
-@bot.message_handler()
-def not_messages(message):
-        logger.info(message)
 
 if __name__ == '__main__':
     send2admins("Бот рестартовано, /help")
