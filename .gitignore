@@ -1,4 +1,3 @@
-*/config.ini
 __pycache__
 requests
 users
@@ -8,3 +7,4 @@ requests/*
 users/* 
 build/*
 *.log
+*.ini
