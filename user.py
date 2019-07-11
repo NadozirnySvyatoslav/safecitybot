@@ -70,7 +70,7 @@ class User:
         if not os.path.exists(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches'):
             os.makedirs(requests_dir + os.path.sep + self.uuid + os.path.sep + 'attaches')
             fo=open(requests_dir + os.path.sep + self.uuid + os.path.sep + 'header.txt',"a")
-            msg = re.sub('#username#' , self.username, msg)
+            msg = re.sub('#username#' , str(self.username), msg)
             msg = re.sub('#user_id#' , self.id, msg)
             msg = re.sub('#email#' , self.email, msg)
             msg = re.sub('#fio#' , self.fio, msg)
