@@ -565,13 +565,13 @@ def finish(message):
                         bot_send_message(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'],"Подано нове звернення:\n"+msg,parse_mode="HTML")
                         brief="Прийнято нове звернення "
                         if not users[str(message.from_user.id)].username is None:
-                            brief=brief+" від <a href=\"tg://user?id="+message.from_user.id+"\">"+users[str(message.from_user.id)].username+ "</a>\n"
+                            brief=brief+" від <a href=\"tg://user?id="+str(message.from_user.id)+"\">@"+users[str(message.from_user.id)].username+ "</a>\n"
                         else:
-                            brief=brief+" від <a href=\"tg://user?id="+message.from_user.id+"\">"+users[str(message.from_user.id)].fio+ "</a>\n"
+                            brief=brief+" від <a href=\"tg://user?id="+str(message.from_user.id)+"\">"+users[str(message.from_user.id)].fio+ "</a>\n"
                         if len(data)>0:
-                            brief=brief+"\n"+data
-                        if not config['deafult']['brief_copy'] is None:
-                                bot_send_message(config['deafult']['brief_copy'],brief,parse_mode="HTML")
+                            brief=brief+data
+                        if not config['default']['brief_copy'] is None:
+                                bot_send_message(config['default']['brief_copy'],brief,parse_mode="HTML")
                         if not users[str(message.from_user.id)].location is None:
                             try:
                                 bot.send_location(config['service'+str(users[str(message.from_user.id)].selected)]['responsible_tg'], 
