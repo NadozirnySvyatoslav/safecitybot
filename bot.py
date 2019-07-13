@@ -178,17 +178,17 @@ def is_selected(message):
                     filename=message.document.file_name
 
                 try:
-                    logger.info("Download file "+str(message.document)+" "+str(f))
-                    download_file("https://api.telegram.org/file/bot"+config['default']['token']+"/"+f.file_path, users[str(message.from_user.id)].filespath(filename))
+                    logger.info("Download file "+str(filename)+" "+str(f))
+                    download_file("https://api.telegram.org/file/bot"+config['default']['token']+"/"+str(f.file_path), users[str(message.from_user.id)].filespath(filename))
                     bot_send_message(message.chat.id,"Прийнято")
                 except Exception as error:
-                    logger.error(str(error))
+                    logger.error("Error download file: "+str(error))
                 return False
                     
             else:
                 bot_send_message(message.chat.id,config["service"+str(users[str(message.from_user.id)].selected)]["not_active_msg"])
         except Exception as error:
-            logger.error("No service " + str(users[str(message.from_user.id)].selected) + " found " + str(error))
+            logger.error("Add request data error: " + str(users[str(message.from_user.id)].selected) + " found " + str(error))
 
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard = True, row_width = 2)
@@ -197,7 +197,7 @@ def is_selected(message):
             btn = types.KeyboardButton("/service " + str(indx) + " \"" + config["service"+str(indx)]["name"] + "\"")
             markup.add(btn)
         except Exception as error:
-            logger.error("No service " + str(indx) + " found " + str(error))
+            logger.error("Error load Service " + str(indx) + " found " + str(error))
     bot_send_message(message.chat.id,"Ви авторизовані як " + users[str(message.from_user.id)].fio + "\nВиберіть службу", reply_markup=markup)
     return False
 
